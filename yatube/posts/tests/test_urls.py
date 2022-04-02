@@ -5,7 +5,7 @@ from django.test import TestCase, Client
 
 from posts.models import Post, Group
 from posts.tests.settings import (
-    pages, UNEXISTING_PAGE_URL, NOT_AUTHOR, 
+    pages, UNEXISTING_PAGE_URL, NOT_AUTHOR,
     TEST_GROUP_SLUG, AUTOTEST_AUTH_USERNAME
 )
 
@@ -13,7 +13,7 @@ User = get_user_model()
 
 
 class StaticUrlTest(TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -31,7 +31,7 @@ class StaticUrlTest(TestCase):
 
     def setUp(self):
         # Клиент незалогиненного пользователя
-        self.guest_client = Client()        
+        self.guest_client = Client()
         # Клиент залогиненного пользователя
         self.user = StaticUrlTest.user
         self.auth_client = Client()
@@ -46,8 +46,8 @@ class StaticUrlTest(TestCase):
         for page in [page for page in pages if 'All' in page.permissions]:
             with self.subTest(page.url):
                 self.assertEqual(
-                    self.guest_client.get(page.url).status_code, 
-                    HTTPStatus.OK, 
+                    self.guest_client.get(page.url).status_code,
+                    HTTPStatus.OK,
                     f'{page.template} is not accessible for guest user'
                 )
 
@@ -55,11 +55,13 @@ class StaticUrlTest(TestCase):
     def test_guest_user_redirect(self):
         for page in [page for page in pages if 'All' not in page.permissions]:
             with self.subTest(page.url):
-                response = self.guest_client.get(page.url, follow=True)
-                self.assertRedirects(                    
-                    response, 
+                self.assertRedirects(
+                    self.guest_client.get(page.url, follow=True),
                     f'/auth/login/?next={page.url}',
-                    msg_prefix=f'Expected redirect ({page.url}) ---> (/auth/login/?next={page.url})'
+                    msg_prefix=(
+                        f'Expected redirect ({page.url})'
+                        ' ---> (/auth/login/?next={page.url})'
+                    )
                 )
 
     # Проверяет прямой доступ ко всем ссылкам для авторизованного пользователя
@@ -67,19 +69,19 @@ class StaticUrlTest(TestCase):
         for page in [page for page in pages if 'Auth' in page.permissions]:
             with self.subTest(page.url):
                 self.assertEqual(
-                    self.auth_client.get(page.url).status_code, 
-                    HTTPStatus.OK, 
+                    self.auth_client.get(page.url).status_code,
+                    HTTPStatus.OK,
                     f'{page.template} does not accessible for authorized user'
                 )
 
     # Тест доступа к несуществующей странице
-    def test_unexisting_page(self):        
+    def test_unexisting_page(self):
         self.assertEqual(
             self.guest_client.get(UNEXISTING_PAGE_URL).status_code,
-            HTTPStatus.NOT_FOUND, 
+            HTTPStatus.NOT_FOUND,
             f'Unexisting page {UNEXISTING_PAGE_URL} does not return 404'
         )
-    
+
     # Тест доступа "не автора" к редактированию
     def test_auth_not_author_direct_access(self):
         self.not_author = User.objects.create_user(username=NOT_AUTHOR)
@@ -90,11 +92,14 @@ class StaticUrlTest(TestCase):
             with self.subTest(page.url):
                 self.assertNotEqual(
                     self.not_author_client.get(page.url).status_code,
-                    HTTPStatus.OK, 
+                    HTTPStatus.OK,
                     f'Not author has access by {page.template}'
                 )
-    
+
     def test_correct_template(self):
         for page in [page for page in pages if 'Auth' in page.permissions]:
             with self.subTest(page.url):
-                self.assertTemplateUsed(self.auth_client.get(page.url), page.template)
+                self.assertTemplateUsed(
+                    self.auth_client.get(page.url),
+                    page.template
+                )

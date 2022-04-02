@@ -33,7 +33,7 @@ class PostViewsTest(TestCase):
 
     def setUp(self):
         # Клиент незалогиненного пользователя
-        self.guest_client = Client()        
+        self.guest_client = Client()
         # Клиент залогиненного пользователя
         self.user = PostViewsTest.user
         self.auth_client = Client()
@@ -68,7 +68,8 @@ class ContextViewsTest(TestCase):
             slug=TEST_GROUP_SLUG_1,
             description='Тестовая группа. Должна быть пустой',
         )
-        # Создание 17 постов с пагинацией по 10 от тестового автора в тестовой группе.
+        # Создание 17 постов с пагинацией по 10 от тестового автора
+        # в тестовой группе.
         # Таким образом можно проверить одной функцией пагинацию:
         # на главной странице, странице профиля и странице группы
         for i in range(17):
@@ -80,7 +81,7 @@ class ContextViewsTest(TestCase):
 
     def setUp(self):
         # Клиент незалогиненного пользователя
-        self.guest_client = Client()        
+        self.guest_client = Client()
         # Клиент залогиненного пользователя
         self.user = ContextViewsTest.user
         self.auth_client = Client()
@@ -89,9 +90,9 @@ class ContextViewsTest(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()   
+        super().tearDownClass()
 
-    # Проверка пагинации   
+    # Проверка пагинации
     def test_first_page_contains_ten_records(self):
         for page in [page for page in pages if page.paginated]:
             with self.subTest(page.template):
@@ -106,51 +107,68 @@ class ContextViewsTest(TestCase):
                 response = self.guest_client.get(page.reverse + '?page=2')
                 self.assertEqual(len(response.context['page_obj']), 7)
 
-    def test_correct_context(self):
-        for page in pages:
-            response = self.auth_client.get(page.reverse)
-            # Проверка контекста главной
-            if page.address == 'posts:index':
-                test_objs = response.context['page_obj']
-                for post in test_objs:
-                    self.assertEqual(post.text, 'Текст. Автотест')
-                    self.assertEqual(post.author, self.user)
-                    self.assertEqual(post.group, self.test_group)
-                continue
-            # Проверка контекста страницы группы
-            if page.address == 'posts:group_list':
-                group_posts_obj = response.context['page_obj']
-                for post in group_posts_obj:
-                    self.assertEqual(post.group, self.test_group)
-                continue
-            # Проверка контекста профиля
-            if page.address == 'posts:profile':
-                profile_posts_obj = response.context['page_obj']
-                reference_obj = Post.objects.filter(author=self.user).first()
-                for post in profile_posts_obj:
-                    self.assertEqual(post.author, reference_obj.author)
-                continue
-            # Проверка контекста подробностей о посте
-            if page.address == 'posts:post_detail':
-                refernce_obj = Post.objects.all().last()
-                post = response.context['post']
-                self.assertEqual(post.id, refernce_obj.id)
-                continue
-            # Проверка контекста страницы создания поста
-            if page.address == 'posts:post_create':
-                form = response.context['form']
-                self.assertIsInstance(form.fields.get('text'), forms.fields.CharField)
-                self.assertIsInstance(form.fields.get('group'), forms.fields.ChoiceField)
-                continue
-            # Проверка контекста старницы редактирования поста
-            if page.address == 'posts:post_edit':
-                refernce_obj = Post.objects.all().last()
-                post = response.context['post']
-                form = response.context['form']
-                self.assertEqual(post.id, refernce_obj.id)
-                self.assertIsInstance(form.fields.get('text'), forms.fields.CharField)
-                self.assertIsInstance(form.fields.get('group'), forms.fields.ChoiceField)
-                continue
+    # Здесь была функция для проверки всех страниц в одном цикле,
+    # но она не прошла линтеры из-за сложности. RIP
+    # Ниже её потомки для каждой страницы
+    def test_correct_context_index(self):
+        for page in [page for page in pages if page.address == 'posts:index']:
+            for post in self.auth_client.get(page.reverse).context['page_obj']:
+                self.assertEqual(post.text, 'Текст. Автотест')
+                self.assertEqual(post.author, self.user)
+                self.assertEqual(post.group, self.test_group)
+
+    def test_correct_context_group(self):
+        for page in (
+            [page for page in pages if page.address == 'posts:group_list']
+        ):
+            for post in self.auth_client.get(page.reverse).context['page_obj']:
+                self.assertEqual(post.group, self.test_group)
+
+    def test_correct_context_profile(self):
+        reference_obj = Post.objects.filter(author=self.user).first()
+        for page in (
+            [page for page in pages if page.address == 'posts:profile']
+        ):
+            for post in self.auth_client.get(page.reverse).context['page_obj']:
+                self.assertEqual(post.author, reference_obj.author)
+
+    def test_correct_context_post_detail(self):
+        refernce_obj = Post.objects.all().last()
+        for page in (
+            [page for page in pages if page.address == 'posts:post_detail']
+        ):
+            self.assertEqual(
+                self.auth_client.get(page.reverse).context['post'].id,
+                refernce_obj.id
+            )
+
+    def test_correct_context_post_create(self):
+        for page in (
+            [page for page in pages if page.address == 'posts:post_create']
+        ):
+            form = self.auth_client.get(page.reverse).context['form']
+            self.assertIsInstance(
+                form.fields.get('text'),
+                forms.fields.CharField
+            )
+            self.assertIsInstance(
+                form.fields.get('group'),
+                forms.fields.ChoiceField
+            )
+
+    def test_correct_context_edit(self):
+        for page in (
+            [page for page in pages if page.address == 'posts:post_edit']
+        ):
+            form = self.auth_client.get(page.reverse).context['form']
+            self.assertIsInstance(
+                form.fields.get('text'),
+                forms.fields.CharField
+            )
+            self.assertIsInstance(
+                form.fields.get('group'),
+                forms.fields.ChoiceField
+            )
 
     def test_post_correct_group(self):
         response = self.auth_client.get(reverse(

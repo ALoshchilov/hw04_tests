@@ -6,7 +6,9 @@ from django.urls import reverse
 
 from posts.forms import PostForm
 from posts.models import Post, Group
-from posts.tests.settings import TEST_GROUP_SLUG, AUTOTEST_AUTH_USERNAME
+from posts.tests.settings import (
+    TEST_GROUP_SLUG, AUTOTEST_AUTH_USERNAME, FIRST_POST_ID
+)
 
 User = get_user_model()
 
@@ -26,7 +28,7 @@ class PostCreateFormTest(TestCase):
             author=cls.user,
             group=cls.group,
             text='Тестовый пост, созданный в фикстурах'
-        )        
+        )
         cls.form = PostForm()
 
     def setUp(self):
@@ -41,47 +43,44 @@ class PostCreateFormTest(TestCase):
     def test_post_create(self):
         posts_total = Post.objects.count()
         post = Post.objects.all().first()
-        form_data = {
-            'text': 'Текст тестового поста',
-        }
         response = self.auth_client.post(
             reverse('posts:post_create'),
-            data=form_data,
+            data={'text': 'Текст тестового поста'},
             follow=True
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertRedirects(
-            response, 
-            reverse('posts:profile', kwargs={'username': AUTOTEST_AUTH_USERNAME}),
+            response,
+            reverse(
+                'posts:profile',
+                kwargs={'username': AUTOTEST_AUTH_USERNAME}
+            ),
         )
-        self.assertEqual(Post.objects.count(), posts_total+1)
+        self.assertEqual(Post.objects.count(), posts_total + 1)
         self.assertTrue(
             Post.objects.filter(
                 id=post.id + 1,
                 text='Текст тестового поста',
             )
         )
-    
+
     def test_post_edit(self):
         posts_total = Post.objects.count()
-        post = Post.objects.all().first()    
-        form_data = {
-            'text': 'Обновленный текст тестового поста',
-        }
+        post = Post.objects.all().first()
         response = self.auth_client.post(
             reverse('posts:post_edit', kwargs={'post_id': post.id}),
-            data=form_data,
+            data={'text': 'Обновленный текст тестового поста'},
             follow=True
         )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertRedirects(
-            response, 
+            response,
             reverse('posts:post_detail', kwargs={'post_id': post.id}),
         )
         self.assertEqual(Post.objects.count(), posts_total)
         self.assertTrue(
             Post.objects.filter(
-                id=1,
+                id=FIRST_POST_ID,
                 text='Обновленный текст тестового поста',
             )
         )

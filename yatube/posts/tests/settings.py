@@ -17,8 +17,8 @@ class Page:
     Класс для создания объектов, хранящих всю необходимую информацию для тестируемых страниц.
     В случае добавления страниц в проект достаточно создать дополнителньый объект класса Page.
     На основании атрибутов класса будут определены необходимые автотесты за исключением проверки контекста.
-    Проверку контекста для новой страницы необходимо добавить в функции
-    posts.tests.test_views.test_correct_context
+    Проверку контекста для новой страницы необходимо добавить в модуле posts.tests.test_views
+    Имя функции должно соответствовать паттерну test_correct_context_<адрес_новой_страницы>
     """
     def __init__(self, template, url, address, permissions, paginated, reverse_args=None):
         self.template = template
@@ -35,7 +35,7 @@ index = Page(
     address='posts:index',
     permissions=['All', 'Auth'],
     paginated=True,
-)   
+)
 pages.append(index)
 group = Page(
     template='posts/group_list.html',
@@ -44,10 +44,10 @@ group = Page(
     permissions=['All', 'Auth'],
     paginated=True,
     reverse_args={'slug': TEST_GROUP_SLUG},
-)   
+)
 pages.append(group)
 profile = Page(
-    template='posts/profile.html', 
+    template='posts/profile.html',
     url=f'/profile/{AUTOTEST_AUTH_USERNAME}/',
     address='posts:profile',
     permissions=['All', 'Auth'],
@@ -56,7 +56,7 @@ profile = Page(
 )
 pages.append(profile)
 post = Page(
-    template='posts/post_detail.html', 
+    template='posts/post_detail.html',
     url=f'/posts/{FIRST_POST_ID}/',
     address='posts:post_detail',
     permissions=['All', 'Auth'],
@@ -65,7 +65,7 @@ post = Page(
 )
 pages.append(post)
 create = Page(
-    template='posts/create_post.html', 
+    template='posts/create_post.html',
     url='/create/',
     address='posts:post_create',
     permissions=['Auth'],
@@ -73,7 +73,7 @@ create = Page(
 )
 pages.append(create)
 edit = Page(
-    template='posts/create_post.html', 
+    template='posts/create_post.html',
     url=f'/posts/{FIRST_POST_ID}/edit/',
     address='posts:post_edit',
     permissions=['Author'],
@@ -82,7 +82,7 @@ edit = Page(
 )
 pages.append(edit)
 author = Page(
-    template='about/author.html', 
+    template='about/author.html',
     url='/about/author/',
     address='about:author',
     permissions=['All', 'Auth'],
@@ -90,7 +90,7 @@ author = Page(
 )
 pages.append(author)
 tech = Page(
-    template='about/tech.html', 
+    template='about/tech.html',
     url='/about/tech/',
     address='about:tech',
     permissions=['All', 'Auth'],

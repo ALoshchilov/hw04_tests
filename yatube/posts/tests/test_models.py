@@ -15,7 +15,7 @@ class PostModelTest(TestCase):
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='Тестовый слаг',
-            description='Тестовое описание',            
+            description='Тестовое описание',
         )
         cls.post = Post.objects.create(
             author=cls.user,
@@ -27,13 +27,13 @@ class PostModelTest(TestCase):
         self.assertEqual(self.group.__str__(), 'Тестовая группа')
 
         self.assertLessEqual(
-            len(self.post.__str__()), 
-            15, 
+            len(self.post.__str__()),
+            15,
             'Некорректная длина вывода __str__ для поста'
         )
 
         self.assertEqual(
-            self.post.__str__(), 
+            self.post.__str__(),
             self.post.text[:15]
         )
 
@@ -46,7 +46,7 @@ class PostModelTest(TestCase):
         for field, expected_value in field_help_texts.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    self.post._meta.get_field(field).help_text, expected_value) 
+                    self.post._meta.get_field(field).help_text, expected_value)
 
     def test_models_have_correct_verbosename(self):
         field_verbose_names = {
@@ -59,4 +59,6 @@ class PostModelTest(TestCase):
         for field, expected_value in field_verbose_names.items():
             with self.subTest(field=field):
                 self.assertEqual(
-                    self.post._meta.get_field(field).verbose_name, expected_value)
+                    self.post._meta.get_field(field).verbose_name,
+                    expected_value
+                )
