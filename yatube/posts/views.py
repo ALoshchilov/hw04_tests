@@ -4,9 +4,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import PostForm
 from .models import Group, Post, User
+from .settings import POSTS_ON_PAGE
 
 
-def paginate(request, posts, posts_per_page=10):
+def paginate(request, posts, posts_per_page=POSTS_ON_PAGE):
     return Paginator(posts, posts_per_page).get_page(request.GET.get('page'))
 
 

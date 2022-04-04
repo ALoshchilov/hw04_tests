@@ -43,14 +43,7 @@
 
               <!-- Обход полей формы -->
               {% for field in form %}
-                <div class="form-group row my-3"
-                  {% if field.field.required %}
-                    aria-required="true"
-                  {% else %}
-                    aria-required="false"
-                  {% endif %}
-                >
-
+                <div class="form-group row my-3">
                   <label for="{{ field.id_for_label }}">
                     {{ field.label }}
                     {% if field.field.required %}
