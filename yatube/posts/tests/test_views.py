@@ -1,39 +1,19 @@
-from http import HTTPStatus
-
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from posts.models import Post, Group, User
 from posts.settings import POSTS_ON_PAGE
 
-TEST_GROUP_SLUG = 'TestGroupSlug'
-TEST_GROUP_SLUG_1 = 'TestGroupSlug1'
-AUTOTEST_AUTH_USERNAME = 'AutoTestUser'
-
-CONST_URLS = {
-    'posts:index': reverse('posts:index'),
-    'posts:post_create': reverse('posts:post_create'),
-    'posts:group_list': reverse(
-        'posts:group_list', args=[TEST_GROUP_SLUG]
-    ),
-    'posts:profile': reverse(
-        'posts:profile', args=[AUTOTEST_AUTH_USERNAME]
-    )
-}
-
-# Константы и переменные для проверки пагинатора
-TEST_POSTS_COUNT = 56
-posts_on_last_page = TEST_POSTS_COUNT % POSTS_ON_PAGE
-if TEST_POSTS_COUNT <= POSTS_ON_PAGE:
-    posts_on_first_page = TEST_POSTS_COUNT
-    total_pages = 1
-else:
-    if TEST_POSTS_COUNT % POSTS_ON_PAGE == 0:
-        posts_on_last_page = POSTS_ON_PAGE
-        total_pages = TEST_POSTS_COUNT // POSTS_ON_PAGE
-    else:
-        total_pages = TEST_POSTS_COUNT // POSTS_ON_PAGE + 1
-    posts_on_first_page = POSTS_ON_PAGE
+SLUG = 'TestGroupSlug'
+SLUG_1 = 'TestGroupSlug1'
+NICK = 'AutoTestUser'
+INDEX_URL = reverse('posts:index')
+POST_CREATE_URL = reverse('posts:post_create')
+USER_LOGIN_URL = reverse('users:login')
+PROFILE_URL = reverse('posts:profile', args=[NICK])
+GROUP_URL = reverse('posts:group_list', args=[SLUG])
+GROUP_URL_1 = reverse('posts:group_list', args=[SLUG_1])
+TEST_POSTS_COUNT = POSTS_ON_PAGE + 1
 
 
 class ContextViewsTest(TestCase):
@@ -42,152 +22,93 @@ class ContextViewsTest(TestCase):
     def setUpClass(cls):
 
         super().setUpClass()
-        cls.user = User.objects.create_user(username=AUTOTEST_AUTH_USERNAME)
+        cls.user = User.objects.create_user(username=NICK)
         cls.group_1 = Group.objects.create(
             title='Тестовая группа 1. Заголовок',
-            slug=TEST_GROUP_SLUG,
+            slug=SLUG,
             description='Тестовая группа 1. Описание',
         )
         cls.group_2 = Group.objects.create(
             title='Тестовая группа 2. Заголовок',
-            slug=TEST_GROUP_SLUG_1,
+            slug=SLUG_1,
             description='Тестовая группа 2. Проверка ',
         )
-        Post.objects.bulk_create([
+        Post.objects.bulk_create(
             Post(
                 author=cls.user,
-                text='Текст. Автотест.',
+                text=f'Текст. Автотест. Пост № {i}',
                 group=cls.group_1
             ) for i in range(TEST_POSTS_COUNT)
-        ])
-        cls.first_post = Post.objects.all().first()
-        cls.CALC_URLS = {
-            'posts:post_edit': reverse(
-                'posts:post_edit', args=[cls.first_post.id]
-            ),
-            'posts:post_detail': reverse(
-                'posts:post_detail', args=[cls.first_post.id]
-            )
-        }
-        cls.routes = {**cls.CALC_URLS, **CONST_URLS}
+        )
+        cls.ref_post = Post.objects.all().first()
+        cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.ref_post.id])
+        cls.POST_DETAIL_URL = reverse(
+            'posts:post_detail', args=[cls.ref_post.id]
+        )
 
     def setUp(self):
         # Клиент незалогиненного пользователя
-        self.guest_client = Client()
+        self.guest = Client()
         # Клиент залогиненного пользователя
-        self.auth_client = Client()
-        self.auth_client.force_login(ContextViewsTest.user)
-        self.test_group = ContextViewsTest.group_1
+        self.author = Client()
+        self.author.force_login(self.user)
 
     def test_paginator(self):
-        urls = [
+        CASES = [
             # Первая страница
-            (ContextViewsTest.routes['posts:index'], posts_on_first_page),
-            (ContextViewsTest.routes['posts:group_list'], posts_on_first_page),
-            (ContextViewsTest.routes['posts:profile'], posts_on_first_page),
+            (INDEX_URL, POSTS_ON_PAGE),
+            (GROUP_URL, POSTS_ON_PAGE),
+            (PROFILE_URL, POSTS_ON_PAGE),
             # Последняя страница
-            (
-                ContextViewsTest.routes['posts:index']
-                + f"?page={total_pages}",
-                posts_on_last_page
-            ),
-            (
-                ContextViewsTest.routes['posts:group_list']
-                + f"?page={total_pages}",
-                posts_on_last_page
-            ),
-            (
-                ContextViewsTest.routes['posts:profile']
-                + f"?page={total_pages}",
-                posts_on_last_page
-            ),
+            (f'{INDEX_URL}?page=2', 1),
+            (f'{GROUP_URL}?page=2', 1),
+            (f'{PROFILE_URL}?page=2', 1),
 
         ]
-        for url in urls:
-            with self.subTest(url[0]):
-                response = self.guest_client.get(url[0])
+        for url, posts_count in CASES:
+            with self.subTest(url=url, posts_count=posts_count):
                 self.assertEqual(
-                    len(response.context['page_obj']), url[1],
-                    (
-                        f'Wrong posts number on <{url[0]}> '
-                        f'Expected: {url[1]} '
-                        f'Got: {len(response.context["page_obj"])}'
-                    )
+                    len(self.guest.get(url).context['page_obj']),
+                    posts_count
                 )
 
-    def test_correct_context_post_lists(self):
-        urls = [
-            ('posts:index', 'page_obj'),
-            ('posts:group_list', 'page_obj'),
-            ('posts:profile', 'page_obj'),
-            ('posts:post_detail', 'post'),
+    def test_correct_post_in_lists(self):
+        CASES = [
+            (INDEX_URL, 'page_obj'),
+            (GROUP_URL, 'page_obj'),
+            (PROFILE_URL, 'page_obj'),
+            (self.POST_DETAIL_URL, 'post'),
         ]
-        for url in urls:
-            with self.subTest(url[0]):
-                response = self.auth_client.get(
-                    ContextViewsTest.routes[url[0]]
-                ).context[url[1]]
+        for url, obj in CASES:
+            response = self.author.get(url).context[obj]
+            with self.subTest(url=url, posts_obj=obj):
                 if isinstance(response, Post):
-                    response = [response]
-                for post in response:
-                    self.assertEqual(
-                        post.text, ContextViewsTest.first_post.text,
-                        (
-                            f'<{url[0]}>. Wrong post text '
-                            f'Expected: "{ContextViewsTest.first_post.text}" '
-                            f'Got: "{post.text}"'
-                        )
-                    )
-                    self.assertEqual(
-                        post.author, ContextViewsTest.first_post.author,
-                        (
-                            f'<{url[0]}>. Wrong post author '
-                            f'Expected: {ContextViewsTest.first_post.author} '
-                            f'Got: {post.author}'
-                        )
-                    )
-                    self.assertEqual(
-                        post.group, ContextViewsTest.first_post.group,
-                        (
-                            f'<{url[0]}>. Wrong post group '
-                            f'Expected: {ContextViewsTest.first_post.group} '
-                            f'Got: {post.group}'
-                        )
-                    )
+                    post = response
+                else:
+                    self.assertIn(self.ref_post, response)
+                    post = response.object_list[
+                        response.object_list.index(self.ref_post)
+                    ]
+                self.assertEqual(post.author, self.ref_post.author)
+                self.assertEqual(post.pub_date, self.ref_post.pub_date)
+                self.assertEqual(post.group, self.ref_post.group)
+                self.assertEqual(post.text, self.ref_post.text)
 
     def test_post_correct_group(self):
-        wrong_group_post = Post.objects.create(
-            author=ContextViewsTest.user,
-            text='Автотест. Проверка отсутствия не в своей группе',
-            group=ContextViewsTest.group_2
-        )
-        response = self.guest_client.get(
-            ContextViewsTest.routes['posts:group_list']
-        )
-        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertNotIn(
-            wrong_group_post,
-            response.context['page_obj'],
-            (
-                'Wrong post on group page! '
-                f'In group list {ContextViewsTest.group_1} '
-                f'found post of {ContextViewsTest.group_2}'
-            )
+            self.ref_post,
+            self.guest.get(GROUP_URL_1).context['page_obj']
         )
 
     def test_context_post_create_edit(self):
-        urls = [
-            ('posts:post_create', ['form']),
-            ('posts:post_edit', ['form', 'post']),
+        CASES = [
+            (POST_CREATE_URL, ['form']),
+            (self.POST_EDIT_URL, ['form', 'post']),
+            (PROFILE_URL, ['author']),
+            (GROUP_URL, ['group']),
         ]
-        for url in urls:
-            response = self.auth_client.get(
-                ContextViewsTest.routes[url[0]]
-            )
-            for context_item in url[1]:
-                with self.subTest(url[0]):
-                    self.assertIn(
-                        context_item,
-                        response.context,
-                        f'{context_item} not found in {url[0]} context'
-                    )
+        for url, context in CASES:
+            response = self.author.get(url)
+            for context_item in context:
+                with self.subTest(url=url, context=context):
+                    self.assertIn(context_item, response.context)

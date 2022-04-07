@@ -1,14 +1,17 @@
-from http import HTTPStatus
-
 from django.test import TestCase, Client
 from django.urls import reverse
 
 from posts.models import Post, Group, User
 
-AUTOTEST_AUTH_USERNAME = 'AutoTestUser'
+NICK = 'AutoTestUser'
 NOT_AUTHOR = 'NotAuthor'
-TEST_GROUP_SLUG = 'TestGroupSlug'
+SLUG = 'TestGroupSlug'
 UNEXISTING_PAGE_URL = '/ThisPageIsALieAndTheTestAsWell/'
+INDEX_URL = reverse('posts:index')
+POST_CREATE_URL = reverse('posts:post_create')
+USER_LOGIN_URL = reverse('users:login')
+PROFILE_URL = reverse('posts:profile', args=[NICK])
+GROUP_URL = reverse('posts:group_list', args=[SLUG])
 
 
 class StaticUrlTest(TestCase):
@@ -16,11 +19,11 @@ class StaticUrlTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username=AUTOTEST_AUTH_USERNAME)
-        cls.not_author = User.objects.create_user(username=NOT_AUTHOR)
+        cls.user = User.objects.create_user(username=NICK)
+        cls.another_user = User.objects.create_user(username=NOT_AUTHOR)
         cls.group = Group.objects.create(
             title='Тестовая группа. Заголовок',
-            slug=TEST_GROUP_SLUG,
+            slug=SLUG,
             description='Тестовая группа. Описание',
         )
         cls.post = Post.objects.create(
@@ -28,126 +31,61 @@ class StaticUrlTest(TestCase):
             group=cls.group,
             text='Текст. Автотест',
         )
-        cls.routes = {
-            'users:login': reverse('users:login'),
-            'posts:post_create': reverse('posts:post_create'),
-            'posts:post_edit': reverse('posts:post_edit', args=[cls.post.id]),
-            'posts:post_detail': reverse(
-                'posts:post_detail', args=[cls.post.id]
-            )
-        }
+        cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.id])
+        cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.id])
 
     def setUp(self):
-        # Клиент незалогиненного пользователя
-        self.guest_client = Client()
-        # Клиент залогиненного пользователя
-        self.auth_client = Client()
-        self.auth_client.force_login(StaticUrlTest.user)
-
-        self.not_author_client = Client()
-        self.not_author_client.force_login(StaticUrlTest.not_author)
+        self.guest = Client()
+        self.author = Client()
+        self.author.force_login(self.user)
+        self.another = Client()
+        self.another.force_login(self.another_user)
 
     def test_user_direct_access(self):
-        urls = [
-            ('/', self.guest_client, HTTPStatus.OK),
-            ('/', self.auth_client, HTTPStatus.OK),
-            (f'/group/{TEST_GROUP_SLUG}/', self.guest_client, HTTPStatus.OK),
-            (f'/group/{TEST_GROUP_SLUG}/', self.auth_client, HTTPStatus.OK),
-            (
-                f'/profile/{AUTOTEST_AUTH_USERNAME}/',
-                self.guest_client, HTTPStatus.OK
-            ),
-            (
-                f'/profile/{AUTOTEST_AUTH_USERNAME}/',
-                self.auth_client, HTTPStatus.OK
-            ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/', self.guest_client,
-                HTTPStatus.OK
-            ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/', self.auth_client,
-                HTTPStatus.OK
-            ),
-            ('/create/', self.guest_client, HTTPStatus.FOUND),
-            ('/create/', self.auth_client, HTTPStatus.OK),
-            (
-                f'/posts/{StaticUrlTest.post.id}/edit/',
-                self.auth_client, HTTPStatus.OK
-            ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/edit/',
-                self.guest_client, HTTPStatus.FOUND
-            ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/edit/',
-                self.not_author_client, HTTPStatus.FOUND
-            ),
-            (UNEXISTING_PAGE_URL, self.guest_client, HTTPStatus.NOT_FOUND),
-            (UNEXISTING_PAGE_URL, self.auth_client, HTTPStatus.NOT_FOUND),
+        CASES = [
+            (INDEX_URL, self.guest, 200),
+            (GROUP_URL, self.guest, 200),
+            (PROFILE_URL, self.guest, 200),
+            (self.POST_DETAIL_URL, self.guest, 200),
+            (POST_CREATE_URL, self.guest, 302),
+            (POST_CREATE_URL, self.author, 200),
+            (self.POST_EDIT_URL, self.author, 200),
+            (self.POST_EDIT_URL, self.guest, 302),
+            (self.POST_EDIT_URL, self.another, 302),
+            (UNEXISTING_PAGE_URL, self.guest, 404)
         ]
-        for url in urls:
-            with self.subTest(url[0]):
-                self.assertEqual(
-                    url[1].get(url[0]).status_code,
-                    url[2],
-                    f'{url[0]} returned wrong status code for client {url[1]}'
-                )
+        for url, client, status in CASES:
+            with self.subTest(url):
+                self.assertEqual(client.get(url).status_code, status)
 
     def test_guest_user_redirect(self):
-        urls = [
+        CASES = [
             (
-                '/create/', self.guest_client,
-                StaticUrlTest.routes['users:login'] + '?next='
-                + StaticUrlTest.routes['posts:post_create']
+                POST_CREATE_URL, self.guest,
+                f'{USER_LOGIN_URL}?next={POST_CREATE_URL}'
             ),
             (
-                f'/posts/{StaticUrlTest.post.id}/edit/',
-                self.guest_client,
-                StaticUrlTest.routes['users:login'] + '?next='
-                + StaticUrlTest.routes['posts:post_edit']
+                self.POST_EDIT_URL, self.guest,
+                f'{USER_LOGIN_URL}?next={self.POST_EDIT_URL}'
             ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/edit/',
-                self.not_author_client,
-                StaticUrlTest.routes['posts:post_detail']
-            ),
+            (self.POST_EDIT_URL, self.another, self.POST_DETAIL_URL),
         ]
-        for url in urls:
-            with self.subTest(url[0]):
+        for url, client, redirect_url in CASES:
+            with self.subTest(url=url, redirect=redirect_url):
                 self.assertRedirects(
-                    url[1].get(url[0], follow=True),
-                    url[2],
-                    msg_prefix=(
-                        f'Expected redirect ({url[0]})'
-                        f' ---> {url[2]}'
-                    )
+                    client.get(url, follow=True),
+                    redirect_url
                 )
 
     def test_correct_template(self):
-        urls = [
-            ('/', self.auth_client, 'posts/index.html'),
-            (
-                f'/group/{TEST_GROUP_SLUG}/', self.auth_client,
-                'posts/group_list.html'
-            ),
-            (
-                f'/profile/{AUTOTEST_AUTH_USERNAME}/', self.auth_client,
-                'posts/profile.html'
-            ),
-            (
-                f'/posts/{StaticUrlTest.post.id}/', self.auth_client,
-                'posts/post_detail.html'),
-            ('/create/', self.auth_client, 'posts/create_post.html'),
-            (
-                f'/posts/{StaticUrlTest.post.id}/edit/', self.auth_client,
-                'posts/create_post.html'
-            ),
+        CASES = [
+            (INDEX_URL, self.author, 'posts/index.html'),
+            (GROUP_URL, self.author, 'posts/group_list.html'),
+            (PROFILE_URL, self.author, 'posts/profile.html'),
+            (self.POST_DETAIL_URL, self.author, 'posts/post_detail.html'),
+            (POST_CREATE_URL, self.author, 'posts/create_post.html'),
+            (self.POST_EDIT_URL, self.author, 'posts/create_post.html'),
         ]
-        for url in urls:
-            with self.subTest(url[0]):
-                self.assertTemplateUsed(
-                    url[1].get(url[0]),
-                    url[2],
-                    f'Wrong template for {url[0]} found. Expected: {url[2]}'
-                )
+        for url, client, template in CASES:
+            with self.subTest(url=url, template=template):
+                self.assertTemplateUsed(client.get(url), template)

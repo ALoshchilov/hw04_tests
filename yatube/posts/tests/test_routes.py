@@ -1,40 +1,22 @@
 from django.test import TestCase
 from django.urls import reverse
 
+POST_ID = 1
+USER = 'User'
+GROUP = 'Group'
+CASES = [
+    ('index', None, '/'),
+    ('group_list', [GROUP], f'/group/{GROUP}/'),
+    ('profile', [USER], f'/profile/{USER}/'),
+    ('post_create', None, '/create/'),
+    ('post_edit', [POST_ID], f'/posts/{POST_ID}/edit/'),
+    ('post_detail', [POST_ID], f'/posts/{POST_ID}/'),
+]
+
 
 class RoutesTest(TestCase):
-
-    @classmethod
-    def setUp(self):
-        super().setUpClass()
-        self.PAGE_NUMBER = 1
-        self.USER = 'User'
-        self.GROUP = 'Group'
-
     def test_correct_routes(self):
-        print(self.GROUP)
-        routes = {
-            reverse('posts:index'): '/',
-            reverse(
-                'posts:group_list', args=[self.GROUP]
-            ): f'/group/{self.GROUP}/',
-            reverse(
-                'posts:profile', args=[self.USER]
-            ): f'/profile/{self.USER}/',
-            reverse('posts:post_create'): '/create/',
-            reverse(
-                'posts:post_edit', args=[self.PAGE_NUMBER]
-            ): f'/posts/{self.PAGE_NUMBER}/edit/',
-            reverse(
-                'posts:post_detail', args=[self.PAGE_NUMBER]
-            ): f'/posts/{self.PAGE_NUMBER}/',
-        }
-        for route, expected_route in routes.items():
-            with self.subTest(route=route):
-                self.assertEqual(
-                    route, expected_route,
-                    (
-                        f'Wrong route. Got: {route}'
-                        f'Expected: {expected_route}'
-                    )
-                )
+        for url_name, args, url in CASES:
+            reversed_url = reverse(f'posts:{url_name}', args=args)
+            with self.subTest(reverse=reversed_url, url=url):
+                self.assertEqual(reversed_url, url)
