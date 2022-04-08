@@ -2,7 +2,6 @@ from django import forms
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from posts.forms import PostForm
 from posts.models import Post, Group, User
 
 SLUG = 'TestGroupSlug'
@@ -28,18 +27,18 @@ class PostCreateFormTest(TestCase):
             slug=SLUG_1,
             description='Тестовое описание 2',
         )
-        cls.first_post = Post.objects.create(
+        cls.ref_post = Post.objects.create(
             author=cls.user,
             group=cls.group,
             text='Тестовый пост, созданный в фикстурах'
         )
-        cls.form = PostForm()
         cls.POST_EDIT_URL = reverse(
-            'posts:post_edit', args=[cls.first_post.id]
+            'posts:post_edit', args=[cls.ref_post.id]
         )
         cls.POST_DETAIL_URL = reverse(
-            'posts:post_detail', args=[cls.first_post.id]
+            'posts:post_detail', args=[cls.ref_post.id]
         )
+        print(cls.ref_post.id)
 
     def setUp(self):
         self.author = Client()
@@ -57,7 +56,6 @@ class PostCreateFormTest(TestCase):
             follow=True
         )
         posts_after = set(Post.objects.all())
-        # созданный пост как разница двух кверисетов
         posts = posts_after.difference(posts_before)
         self.assertEqual(len(posts), 1, '0 or 2 and more post created')
         post = posts.pop()
@@ -72,22 +70,19 @@ class PostCreateFormTest(TestCase):
             'text': 'Текст обновленного тестового поста',
             'group': self.group1.id
         }
-        ref_post = self.author.get(self.POST_EDIT_URL).context.get('post')
         response = self.author.post(
             self.POST_EDIT_URL, data=form_data, follow=True
         )
-        edited_post = response.context.get('post')
-        # Проверка на случай отсутствия post в контексте
-        self.assertIsInstance(edited_post, Post)
+        post = response.context.get('post')
+        self.assertIsInstance(post, Post)
         self.assertEqual(
             Post.objects.count(), posts_total,
             'Number of posts changed after post editing'
         )
         self.assertRedirects(response, self.POST_DETAIL_URL)
-        self.assertEqual(edited_post.author, ref_post.author)
-        self.assertEqual(edited_post.pub_date, ref_post.pub_date)
-        self.assertEqual(edited_post.group.id, form_data['group'])
-        self.assertEqual(edited_post.text, form_data['text'])
+        self.assertEqual(post.author, self.ref_post.author)
+        self.assertEqual(post.group.id, form_data['group'])
+        self.assertEqual(post.text, form_data['text'])
 
     def test_correct_form_create_edit(self):
         urls = [
