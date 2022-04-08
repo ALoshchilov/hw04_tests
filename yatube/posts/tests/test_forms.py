@@ -45,6 +45,7 @@ class PostCreateFormTest(TestCase):
         self.author.force_login(self.user)
 
     def test_post_create(self):
+        """Тест формы создания поста"""
         posts_before = set(Post.objects.all())
         form_data = {
             'text': 'Текст тестового поста',
@@ -65,6 +66,7 @@ class PostCreateFormTest(TestCase):
         self.assertRedirects(response, PROFILE_URL)
 
     def test_post_edit(self):
+        """Тест формы редактирования поста"""
         posts_total = Post.objects.count()
         form_data = {
             'text': 'Текст обновленного тестового поста',
@@ -85,6 +87,7 @@ class PostCreateFormTest(TestCase):
         self.assertEqual(post.text, form_data['text'])
 
     def test_correct_form_create_edit(self):
+        """Тест типов полей формы создания/редактирования поста"""
         urls = [
             POST_CREATE_URL,
             self.POST_EDIT_URL,

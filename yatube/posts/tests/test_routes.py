@@ -16,6 +16,7 @@ CASES = [
 
 class RoutesTest(TestCase):
     def test_correct_routes(self):
+        """Тест маршрутов для имен урлов"""
         for url_name, args, url in CASES:
             reversed_url = reverse(f'posts:{url_name}', args=args)
             with self.subTest(reverse=reversed_url, url=url):

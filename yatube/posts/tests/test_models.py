@@ -20,31 +20,31 @@ class PostModelTest(TestCase):
         )
 
     def test_models_have_correct_object_names(self):
-        """Проверяем, что у моделей корректно работает __str__."""
+        """Тест корректной работы метода __str__ у моделей."""
         self.assertEqual(
             str(self.post),
             self.post.text[:15]
         )
 
     def test_models_have_correct_helptext(self):
+        """Тест наличия подсказок"""
         field_help_texts = {
             'text': 'Введите текст поста',
             'group': 'Группа, к которой будет относиться пост',
         }
-
         for field, expected_value in field_help_texts.items():
             with self.subTest(field=field):
                 self.assertEqual(
                     Post._meta.get_field(field).help_text, expected_value)
 
     def test_models_have_correct_verbosename(self):
+        """Тест наличия удобочитаемых имен"""
         field_verbose_names = {
             'text': 'Текст поста',
             'pub_date': 'Дата публикации',
             'author': 'Автор',
             'group': 'Группа',
         }
-
         for field, expected_value in field_verbose_names.items():
             with self.subTest(field=field):
                 self.assertEqual(
