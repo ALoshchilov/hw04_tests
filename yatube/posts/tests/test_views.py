@@ -91,9 +91,9 @@ class ContextViewsTest(TestCase):
             (PROFILE_URL, 'page_obj'),
             (self.POST_DETAIL_URL, 'post'),
         ]
-        for url, obj in CASES:
-            response = self.author.get(url)
+        for url, obj in CASES:            
             with self.subTest(url=url, posts_obj=obj):
+                response = self.author.get(url)
                 if obj == 'post':
                     post = response.context[obj]
                 else:
