@@ -91,7 +91,7 @@ class ContextViewsTest(TestCase):
             (PROFILE_URL, 'page_obj'),
             (self.POST_DETAIL_URL, 'post'),
         ]
-        for url, obj in CASES:            
+        for url, obj in CASES:
             with self.subTest(url=url, posts_obj=obj):
                 response = self.author.get(url)
                 if obj == 'post':
@@ -101,7 +101,7 @@ class ContextViewsTest(TestCase):
                     self.assertEqual(len(context_objs), 1)
                     post = context_objs[0]
                 self.assertIsInstance(post, Post)
-                self.assertEqual(post.author.pk, self.ref_post.author.pk)
+                self.assertEqual(post.pk, self.ref_post.pk)
                 self.assertEqual(post.author, self.ref_post.author)
                 self.assertEqual(post.group, self.ref_post.group)
                 self.assertEqual(post.text, self.ref_post.text)
