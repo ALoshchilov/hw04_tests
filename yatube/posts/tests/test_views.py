@@ -92,11 +92,12 @@ class ContextViewsTest(TestCase):
             (self.POST_DETAIL_URL, 'post'),
         ]
         for url, obj in CASES:
+            response = self.author.get(url)
             with self.subTest(url=url, posts_obj=obj):
                 if obj == 'post':
-                    post = self.author.get(url).context[obj]
+                    post = response.context[obj]
                 else:
-                    context_objs = self.author.get(url).context[obj]
+                    context_objs = response.context[obj]
                     self.assertEqual(len(context_objs), 1)
                     post = context_objs[0]
                 self.assertIsInstance(post, Post)
