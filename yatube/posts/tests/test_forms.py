@@ -38,13 +38,12 @@ class PostCreateFormTest(TestCase):
         cls.POST_DETAIL_URL = reverse(
             'posts:post_detail', args=[cls.ref_post.id]
         )
-        print(cls.ref_post.id)
 
     def setUp(self):
         self.author = Client()
         self.author.force_login(self.user)
 
-    def test_post_create(self):
+    def test_post_create_form(self):
         """Тест формы создания поста"""
         posts_before = set(Post.objects.all())
         form_data = {
@@ -65,7 +64,7 @@ class PostCreateFormTest(TestCase):
         self.assertEqual(post.text, form_data['text'])
         self.assertRedirects(response, PROFILE_URL)
 
-    def test_post_edit(self):
+    def test_post_edit_form(self):
         """Тест формы редактирования поста"""
         posts_total = Post.objects.count()
         form_data = {
@@ -75,7 +74,7 @@ class PostCreateFormTest(TestCase):
         response = self.author.post(
             self.POST_EDIT_URL, data=form_data, follow=True
         )
-        post = response.context.get('post')
+        post = response.context['post']
         self.assertIsInstance(post, Post)
         self.assertEqual(
             Post.objects.count(), posts_total,
@@ -86,14 +85,14 @@ class PostCreateFormTest(TestCase):
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.text, form_data['text'])
 
-    def test_correct_form_create_edit(self):
+    def test_correct_form_post_create_edit(self):
         """Тест типов полей формы создания/редактирования поста"""
         urls = [
             POST_CREATE_URL,
             self.POST_EDIT_URL,
         ]
         for url in urls:
-            form = self.author.get(url).context.get('form')
+            form = self.author.get(url).context['form']
             with self.subTest(url=url, form=form):
                 self.assertIsInstance(
                     form.fields.get('text'), forms.fields.CharField

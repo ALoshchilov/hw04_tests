@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -42,13 +43,6 @@ class StaticUrlTest(TestCase):
         self.author.force_login(self.user)
         self.another = Client()
         self.another.force_login(self.another_user)
-        # Удобочитаемые клиенты для выведения информативных сообщений об
-        # ошибках в тестах
-        self.clients = {
-            self.guest: 'guest',
-            self.author: 'author',
-            self.another: 'another'
-        }
 
     def test_user_direct_access(self):
         """Тест кодов HTTP-ответов страниц для различных типов клиентов"""
@@ -67,12 +61,12 @@ class StaticUrlTest(TestCase):
         for url, client, status in CASES:
             with self.subTest(
                 url=url,
-                client_type=self.clients.get(client),
-                HTTPStatus=status
+                user=get_user(client).username or 'Guest',
+                HTTP_Status=status
             ):
                 self.assertEqual(client.get(url).status_code, status)
 
-    def test_guest_user_redirect(self):
+    def test_user_redirect(self):
         """Тест редиректов"""
         CASES = [
             (POST_CREATE_URL, self.guest, POST_CREATE_TO_LOGIN),
@@ -83,7 +77,7 @@ class StaticUrlTest(TestCase):
             with self.subTest(
                 url=url,
                 redirect=redirect_url,
-                client_type=self.clients.get(client),
+                user=get_user(client).username or 'Guest',
             ):
                 self.assertRedirects(
                     client.get(url, follow=True),

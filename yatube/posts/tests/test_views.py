@@ -80,10 +80,10 @@ class ContextViewsTest(TestCase):
                     posts_count
                 )
 
-    def test_correct_post_in_lists(self):
+    def test_post_in_correct_feeds_and_details(self):
         """
-        Тест наличия эталонного поста на главной странице, странице группы,
-        странице профиля и на странице подробностей о посте.
+        Тест наличия эталонного поста на страницах, содержащих ленты постов
+        либо содержащих подробности о посте.
         """
         CASES = [
             (INDEX_URL, 'page_obj'),
@@ -92,22 +92,24 @@ class ContextViewsTest(TestCase):
             (self.POST_DETAIL_URL, 'post'),
         ]
         for url, obj in CASES:
-            response = self.author.get(url).context[obj]
             with self.subTest(url=url, posts_obj=obj):
-                if isinstance(response, Post):
-                    post = response
+                if obj == 'post':
+                    post = self.author.get(url).context[obj]
                 else:
-                    self.assertEqual(
-                        len(response), 1,
-                        f'0 or more than 1 posts was found in feed on {url}'
-                    )
-                    post = response[0]
-                    self.assertIsInstance(post, Post)
+                    context_objs = self.author.get(url).context[obj]
+                    self.assertEqual(len(context_objs), 1)
+                    post = context_objs[0]
+                self.assertIsInstance(post, Post)
+                self.assertEqual(post.author.pk, self.ref_post.author.pk)
                 self.assertEqual(post.author, self.ref_post.author)
                 self.assertEqual(post.group, self.ref_post.group)
                 self.assertEqual(post.text, self.ref_post.text)
 
     def test_post_not_in_wrong_pages(self):
+        """
+        Тест отсутствия эталонного поста на страницах,на которых он
+        отображаться не должен
+        """
         CASES = [
             GROUP_URL_1,
             PROFILE_NOT_AUTHOR_URL
@@ -116,17 +118,16 @@ class ContextViewsTest(TestCase):
             num_pages = self.guest.get(
                 url
             ).context['page_obj'].paginator.num_pages
-            for page in range(1, num_pages + 1):
-                page_url = f'{url}?page={page}'
-                with self.subTest(
-                    url=page_url,
-                    group=self.ref_post.group.slug,
-                    author=self.ref_post.author.username
-                ):
-                    self.assertNotIn(
-                        self.ref_post,
-                        self.guest.get(page_url).context['page_obj']
-                    )
+            with self.subTest(
+                url=url,
+                group=self.ref_post.group.slug,
+                author=self.ref_post.author.username
+            ):
+                self.assertEqual(num_pages, 1)
+                self.assertNotIn(
+                    self.ref_post,
+                    self.guest.get(url).context['page_obj']
+                )
 
     def test_context_post_create_edit(self):
         """Тест контекста на страницах создания и редактирования поста."""
@@ -143,13 +144,14 @@ class ContextViewsTest(TestCase):
     def test_context_post_correct_profile(self):
         """Тест корректного автора в контексте страницы профиля."""
         self.assertEqual(
-            self.guest.get(PROFILE_URL).context.get('author'),
+            self.guest.get(PROFILE_URL).context['author'],
             self.user
         )
 
-    def test_context_post_group(self):
+    def test_context_post_correct_group(self):
         """Тест корректной группы в контексте страницы."""
-        group = self.guest.get(GROUP_URL).context.get('group')
+        group = self.guest.get(GROUP_URL).context['group']
+        self.assertEqual(group.pk, self.group_1.pk)
         self.assertEqual(group.title, self.group_1.title)
         self.assertEqual(group.slug, self.group_1.slug)
         self.assertEqual(group.description, self.group_1.description)
